@@ -109,4 +109,30 @@ describe('Dashboard Overview API (/api/v1/analytics/overview)', () => {
 
     expect(recentTransactions.length).toBe(2);
   });
+
+  it('returns monthly comparison, category distribution, and spending trends across date ranges', async () => {
+    const monthlyRes = await request(app)
+      .get('/api/v1/analytics/monthly?months=6')
+      .set('Authorization', `Bearer ${token}`);
+    expect(monthlyRes.status).toBe(200);
+    expect(monthlyRes.body.data.series.length).toBe(6);
+
+    const catRes = await request(app)
+      .get('/api/v1/analytics/categories?period=CUSTOM&startDate=2026-11-01T00:00:00.000Z&endDate=2026-11-30T23:59:59.000Z')
+      .set('Authorization', `Bearer ${token}`);
+    expect(catRes.status).toBe(200);
+    expect(catRes.body.data.totalExpensePaise).toBe('400000');
+    expect(catRes.body.data.categories[0].categoryName).toBe('Food');
+
+    const trendsRes = await request(app)
+      .get('/api/v1/analytics/trends?period=CUSTOM&startDate=2026-11-01T00:00:00.000Z&endDate=2026-11-30T23:59:59.000Z')
+      .set('Authorization', `Bearer ${token}`);
+    expect(trendsRes.status).toBe(200);
+    const { summary } = trendsRes.body.data;
+    expect(summary.totalIncomePaise).toBe('8000000');
+    expect(summary.totalExpensePaise).toBe('400000');
+    expect(summary.netSavingsPaise).toBe('7600000');
+    expect(summary.highestSpendingCategory.categoryName).toBe('Food');
+    expect(summary.biggestExpense.description).toBe('Nov Dining');
+  });
 });
