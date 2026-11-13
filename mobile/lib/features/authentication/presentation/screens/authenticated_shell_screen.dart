@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../categories/presentation/screens/categories_screen.dart';
+import '../../../dashboard/presentation/screens/dashboard_screen.dart';
 import '../../../transactions/presentation/screens/transactions_screen.dart';
 import '../providers/auth_provider.dart';
 
@@ -24,6 +25,7 @@ class _AuthenticatedShellScreenState
     final user = authState.user;
 
     final pages = <Widget>[
+      const DashboardScreen(),
       const TransactionsScreen(),
       const CategoriesScreen(),
       _AccountOverviewTab(
@@ -35,6 +37,7 @@ class _AuthenticatedShellScreenState
     ];
 
     final titles = <String>[
+      'Dashboard',
       'Transactions',
       'Categories',
       'Account',
@@ -94,6 +97,11 @@ class _AuthenticatedShellScreenState
         selectedIndex: _selectedIndex,
         onDestinationSelected: (idx) => setState(() => _selectedIndex = idx),
         destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.dashboard_outlined),
+            selectedIcon: Icon(Icons.dashboard_rounded),
+            label: 'Dashboard',
+          ),
           NavigationDestination(
             icon: Icon(Icons.receipt_long_outlined),
             selectedIcon: Icon(Icons.receipt_long_rounded),
