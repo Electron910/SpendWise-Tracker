@@ -1,0 +1,60 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment variables (NEVER commit secrets)
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Build outputs
+dist/
+build/
+**/dist/
+**/build/
+coverage/
+**/coverage/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+**/mobile/build/
+**/mobile/.dart_tool/
+**/mobile/ios/Pods/
+**/mobile/ios/.symlinks/
+**/mobile/android/.gradle/
+**/mobile/android/captures/
+**/mobile/android/local.properties
+**/mobile/android/key.properties
+*.jks
+*.keystore
+
+# IDE & OS
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+Thumbs.db
+
+# Prisma SQLite / temp files
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
