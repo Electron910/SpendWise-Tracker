@@ -1,6 +1,10 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
+import '../../../../core/database/local_database.dart';
+import '../../../../core/database/sync_status.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../categories/domain/entities/category_entity.dart';
 import '../../../categorization/domain/services/deterministic_categorizer.dart';
@@ -8,13 +12,21 @@ import '../../domain/entities/transaction_entity.dart';
 import '../../domain/repositories/transactions_repository.dart';
 
 final transactionsRepositoryProvider = Provider<TransactionsRepository>((ref) {
-  return TransactionsRepositoryImpl(dio: ref.watch(dioClientProvider));
+  return TransactionsRepositoryImpl(
+    dio: ref.watch(dioClientProvider),
+    localDb: ref.watch(localDatabaseProvider),
+  );
 });
 
 class TransactionsRepositoryImpl implements TransactionsRepository {
-  TransactionsRepositoryImpl({required Dio dio}) : _dio = dio;
+  TransactionsRepositoryImpl({
+    required Dio dio,
+    LocalDatabase? localDb,
+  })  : _dio = dio,
+        _localDb = localDb;
 
   final Dio _dio;
+  final LocalDatabase? _localDb;
   static const Uuid _uuid = Uuid();
 
   String _extractError(Object error) {
@@ -42,10 +54,20 @@ class TransactionsRepositoryImpl implements TransactionsRepository {
       );
       final data = response.data!['data'] as Map<String, dynamic>;
       final list = data['categories'] as List<dynamic>;
-      return list
+      final categories = list
           .map((item) => CategoryEntity.fromJson(item as Map<String, dynamic>))
           .toList();
+      if (_localDb != null) {
+        await _localDb.upsertCategories(categories);
+      }
+      return categories;
     } catch (e) {
+      if (_localDb != null) {
+        final cached = await _localDb.getCachedCategories(type: type);
+        if (cached.isNotEmpty) {
+          return cached;
+        }
+      }
       throw Exception(_extractError(e));
     }
   }
@@ -69,7 +91,13 @@ class TransactionsRepositoryImpl implements TransactionsRepository {
         },
       );
       final data = response.data!['data'] as Map<String, dynamic>;
-      return CategoryEntity.fromJson(data['category'] as Map<String, dynamic>);
+      final cat = CategoryEntity.fromJson(
+        data['category'] as Map<String, dynamic>,
+      );
+      if (_localDb != null) {
+        await _localDb.upsertCategories([cat]);
+      }
+      return cat;
     } catch (e) {
       throw Exception(_extractError(e));
     }
@@ -116,6 +144,10 @@ class TransactionsRepositoryImpl implements TransactionsRepository {
           .map((item) => TransactionEntity.fromJson(item as Map<String, dynamic>))
           .toList();
 
+      if (_localDb != null) {
+        await _localDb.upsertTransactions(transactions);
+      }
+
       return TransactionsSummaryResult(
         transactions: transactions,
         totalIncomePaise: int.parse(summary['totalIncomePaise'].toString()),
@@ -123,6 +155,28 @@ class TransactionsRepositoryImpl implements TransactionsRepository {
         netSavingsPaise: int.parse(summary['netSavingsPaise'].toString()),
       );
     } catch (e) {
+      if (_localDb != null) {
+        final cached = await _localDb.getCachedTransactions(
+          type: filter.type,
+          categoryId: filter.categoryId,
+          search: filter.search,
+        );
+        int incomePaise = 0;
+        int expensePaise = 0;
+        for (final tx in cached) {
+          if (tx.isIncome) {
+            incomePaise += tx.amountPaise;
+          } else {
+            expensePaise += tx.amountPaise;
+          }
+        }
+        return TransactionsSummaryResult(
+          transactions: cached,
+          totalIncomePaise: incomePaise,
+          totalExpensePaise: expensePaise,
+          netSavingsPaise: incomePaise - expensePaise,
+        );
+      }
       throw Exception(_extractError(e));
     }
   }
@@ -138,27 +192,77 @@ class TransactionsRepositoryImpl implements TransactionsRepository {
     String? merchant,
     String? notes,
   }) async {
+    final clientTxId = _uuid.v4();
+    final payload = <String, dynamic>{
+      'id': clientTxId,
+      'categoryId': categoryId,
+      'type': type,
+      'amountPaise': amountPaise.toString(),
+      'description': description.trim(),
+      'paymentMethod': paymentMethod,
+      'transactionDate': transactionDate.toUtc().toIso8601String(),
+      if (merchant != null && merchant.trim().isNotEmpty)
+        'merchant': merchant.trim(),
+      if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
+    };
+
     try {
       final response = await _dio.post<Map<String, dynamic>>(
         '/transactions',
-        data: {
-          'id': _uuid.v4(),
-          'categoryId': categoryId,
-          'type': type,
-          'amountPaise': amountPaise.toString(),
-          'description': description.trim(),
-          'paymentMethod': paymentMethod,
-          'transactionDate': transactionDate.toUtc().toIso8601String(),
-          if (merchant != null && merchant.trim().isNotEmpty)
-            'merchant': merchant.trim(),
-          if (notes != null && notes.trim().isNotEmpty) 'notes': notes.trim(),
-        },
+        data: payload,
       );
       final data = response.data!['data'] as Map<String, dynamic>;
-      return TransactionEntity.fromJson(
+      final created = TransactionEntity.fromJson(
         data['transaction'] as Map<String, dynamic>,
       );
+      if (_localDb != null) {
+        await _localDb.upsertSingleTransaction(created);
+      }
+      return created;
     } catch (e) {
+      if (_localDb != null) {
+        final cats = await _localDb.getCachedCategories();
+        final matchedCat = cats.firstWhere(
+          (c) => c.id == categoryId,
+          orElse: () => CategoryEntity(
+            id: categoryId,
+            name: 'Offline Category',
+            type: type,
+            icon: 'category',
+            colorHex: '#4F46E5',
+          ),
+        );
+        final offlineTx = TransactionEntity(
+          id: clientTxId,
+          categoryId: categoryId,
+          type: type,
+          amountPaise: amountPaise,
+          currency: 'INR',
+          merchant: merchant?.trim(),
+          description: description.trim(),
+          notes: notes?.trim(),
+          paymentMethod: paymentMethod,
+          transactionDate: transactionDate,
+          syncStatus: SyncStatusState.pendingSync.value,
+          version: 1,
+          category: matchedCat,
+        );
+        await _localDb.upsertSingleTransaction(offlineTx);
+        await _localDb.enqueueSyncOperation(
+          PendingSyncQueueItem(
+            operationId: _uuid.v4(),
+            entityType: 'TRANSACTION',
+            entityId: clientTxId,
+            action: 'CREATE',
+            payloadJson: jsonEncode(payload),
+            syncStatus: SyncStatusState.pendingSync,
+            baseVersion: 1,
+            retryCount: 0,
+            createdAt: DateTime.now().toUtc(),
+          ),
+        );
+        return offlineTx;
+      }
       throw Exception(_extractError(e));
     }
   }
@@ -176,27 +280,76 @@ class TransactionsRepositoryImpl implements TransactionsRepository {
     String? notes,
     int? expectedVersion,
   }) async {
+    final payload = <String, dynamic>{
+      'categoryId': categoryId,
+      'type': type,
+      'amountPaise': amountPaise.toString(),
+      'description': description.trim(),
+      'paymentMethod': paymentMethod,
+      'transactionDate': transactionDate.toUtc().toIso8601String(),
+      'merchant':
+          merchant != null && merchant.trim().isNotEmpty ? merchant.trim() : null,
+      'notes': notes != null && notes.trim().isNotEmpty ? notes.trim() : null,
+      if (expectedVersion != null) 'expectedVersion': expectedVersion,
+    };
+
     try {
       final response = await _dio.patch<Map<String, dynamic>>(
         '/transactions/$id',
-        data: {
-          'categoryId': categoryId,
-          'type': type,
-          'amountPaise': amountPaise.toString(),
-          'description': description.trim(),
-          'paymentMethod': paymentMethod,
-          'transactionDate': transactionDate.toUtc().toIso8601String(),
-          'merchant':
-              merchant != null && merchant.trim().isNotEmpty ? merchant.trim() : null,
-          'notes': notes != null && notes.trim().isNotEmpty ? notes.trim() : null,
-          if (expectedVersion != null) 'expectedVersion': expectedVersion,
-        },
+        data: payload,
       );
       final data = response.data!['data'] as Map<String, dynamic>;
-      return TransactionEntity.fromJson(
+      final updated = TransactionEntity.fromJson(
         data['transaction'] as Map<String, dynamic>,
       );
+      if (_localDb != null) {
+        await _localDb.upsertSingleTransaction(updated);
+      }
+      return updated;
     } catch (e) {
+      if (_localDb != null) {
+        final cats = await _localDb.getCachedCategories();
+        final matchedCat = cats.firstWhere(
+          (c) => c.id == categoryId,
+          orElse: () => CategoryEntity(
+            id: categoryId,
+            name: 'Offline Category',
+            type: type,
+            icon: 'category',
+            colorHex: '#4F46E5',
+          ),
+        );
+        final offlineUpdated = TransactionEntity(
+          id: id,
+          categoryId: categoryId,
+          type: type,
+          amountPaise: amountPaise,
+          currency: 'INR',
+          merchant: merchant?.trim(),
+          description: description.trim(),
+          notes: notes?.trim(),
+          paymentMethod: paymentMethod,
+          transactionDate: transactionDate,
+          syncStatus: SyncStatusState.pendingSync.value,
+          version: expectedVersion ?? 1,
+          category: matchedCat,
+        );
+        await _localDb.upsertSingleTransaction(offlineUpdated);
+        await _localDb.enqueueSyncOperation(
+          PendingSyncQueueItem(
+            operationId: _uuid.v4(),
+            entityType: 'TRANSACTION',
+            entityId: id,
+            action: 'UPDATE',
+            payloadJson: jsonEncode({'id': id, ...payload}),
+            syncStatus: SyncStatusState.pendingSync,
+            baseVersion: expectedVersion ?? 1,
+            retryCount: 0,
+            createdAt: DateTime.now().toUtc(),
+          ),
+        );
+        return offlineUpdated;
+      }
       throw Exception(_extractError(e));
     }
   }
@@ -205,7 +358,27 @@ class TransactionsRepositoryImpl implements TransactionsRepository {
   Future<void> deleteTransaction(String id) async {
     try {
       await _dio.delete<Map<String, dynamic>>('/transactions/$id');
+      if (_localDb != null) {
+        await _localDb.markTransactionDeletedOffline(id);
+      }
     } catch (e) {
+      if (_localDb != null) {
+        await _localDb.markTransactionDeletedOffline(id);
+        await _localDb.enqueueSyncOperation(
+          PendingSyncQueueItem(
+            operationId: _uuid.v4(),
+            entityType: 'TRANSACTION',
+            entityId: id,
+            action: 'DELETE',
+            payloadJson: jsonEncode({'id': id}),
+            syncStatus: SyncStatusState.pendingSync,
+            baseVersion: 1,
+            retryCount: 0,
+            createdAt: DateTime.now().toUtc(),
+          ),
+        );
+        return;
+      }
       throw Exception(_extractError(e));
     }
   }
