@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../analytics/presentation/screens/analytics_screen.dart';
 import '../../../budgets/presentation/screens/budgets_screen.dart';
 import '../../../categories/presentation/screens/categories_screen.dart';
 import '../../../dashboard/presentation/screens/dashboard_screen.dart';
@@ -29,7 +30,7 @@ class _AuthenticatedShellScreenState
       const DashboardScreen(),
       const TransactionsScreen(),
       const BudgetsScreen(),
-      const CategoriesScreen(),
+      const AnalyticsScreen(),
       _AccountOverviewTab(
         fullName: user?.fullName ?? 'SpendWise User',
         email: user?.email ?? '',
@@ -42,7 +43,7 @@ class _AuthenticatedShellScreenState
       'Dashboard',
       'Transactions',
       'Budgets',
-      'Categories',
+      'Analytics',
       'Account',
     ];
 
@@ -116,9 +117,9 @@ class _AuthenticatedShellScreenState
             label: 'Budgets',
           ),
           NavigationDestination(
-            icon: Icon(Icons.category_outlined),
-            selectedIcon: Icon(Icons.category_rounded),
-            label: 'Categories',
+            icon: Icon(Icons.insights_outlined),
+            selectedIcon: Icon(Icons.insights_rounded),
+            label: 'Analytics',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline_rounded),
@@ -177,6 +178,20 @@ class _AccountOverviewTab extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.category_outlined),
+            title: const Text('Manage Categories'),
+            subtitle: const Text('Default & custom expense/income categories'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CategoriesScreen()),
+              );
+            },
           ),
         ),
       ],
