@@ -1,0 +1,44 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: spendwise_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-spendwise_db}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - spendwise_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-spendwise_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: spendwise_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      API_PREFIX: /api/v1
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-spendwise_db}?schema=public
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-change_me_in_production_access_secret_32_chars}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-change_me_in_production_refresh_secret_32_chars}
+      JWT_ACCESS_EXPIRES_IN: 15m
+      JWT_REFRESH_EXPIRES_IN_DAYS: 30
+    ports:
+      - "4000:4000"
+
+volumes:
+  spendwise_pgdata:
