@@ -6,7 +6,7 @@ This document tracks every feature branch, test execution result, commit hash, G
 
 | # | Milestone | Feature / Scope | Branch Name | Status | Tests Executed | Commit Hash | Push Status | Approval Status | Merge Status |
 | :- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| 1 | M1 & M2 | Project Setup, Prisma Schema, JWT Auth & Onboarding (Backend + Mobile) | `feature/authentication` | In Progress | Pending | Pending | Pending | Pending | Pending |
+| 1 | M1 & M2 | Project Setup, Prisma Schema, JWT Auth & Onboarding (Backend + Mobile) | `feature/authentication` | Completed (Awaiting Merge Approval) | Backend: 10/10 passed (`vitest`), Mobile: 5/5 passed (`flutter test`) | Pending Commit | Pushed (`origin/feature/authentication`) | Awaiting Approval | Not Merged |
 | 2 | M2 | Categories & Transaction Management CRUD + Filtering/Search | `feature/transaction-management` | Planned | - | - | - | - | - |
 | 3 | M2 | Deterministic Rule-Based Expense Categorization Engine | `feature/expense-categorization` | Planned | - | - | - | - | - |
 | 4 | M2 | Home Dashboard (Monthly Summary, Charts, Recent Tx, Budget Cards) | `feature/dashboard` | Planned | - | - | - | - | - |

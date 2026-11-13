@@ -1,0 +1,269 @@
+// ============================================================================
+// SpendWise — Intelligent Expense Tracker
+// Prisma Schema (PostgreSQL)
+//
+// FINANCIAL DATA RULE:
+// All monetary values are stored in integer minor units (paise: ₹1.00 = 100)
+// using PostgreSQL BIGINT (`BigInt` in Prisma) to prevent floating-point errors.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TransactionType {
+  EXPENSE
+  INCOME
+}
+
+enum PaymentMethod {
+  UPI
+  CASH
+  DEBIT_CARD
+  CREDIT_CARD
+  NET_BANKING
+  WALLET
+  BANK_TRANSFER
+  OTHER
+}
+
+enum RecurrenceFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+enum NotificationType {
+  BUDGET_THRESHOLD
+  UPCOMING_RECURRING
+  MONTHLY_SUMMARY
+  UNUSUAL_SPENDING
+  SYSTEM
+}
+
+enum SyncStatus {
+  LOCAL_ONLY
+  PENDING_SYNC
+  SYNCING
+  SYNCED
+  SYNC_FAILED
+  CONFLICT
+}
+
+model User {
+  id                     String   @id @default(uuid()) @db.Uuid
+  email                  String   @unique @db.VarChar(255)
+  passwordHash           String   @db.VarChar(255)
+  fullName               String   @db.VarChar(120)
+  currency               String   @default("INR") @db.VarChar(10)
+  themePreference        String   @default("SYSTEM") @db.VarChar(20)
+  isDemoAccount          Boolean  @default(false)
+  notifyBudgetAlerts     Boolean  @default(true)
+  notifyRecurringBills   Boolean  @default(true)
+  notifyMonthlySummary   Boolean  @default(true)
+  notifyUnusualSpending  Boolean  @default(true)
+  passwordResetTokenHash String?  @db.VarChar(255)
+  passwordResetExpiresAt DateTime?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  refreshTokens       RefreshToken[]
+  categories          Category[]
+  transactions        Transaction[]
+  budgets             Budget[]
+  recurringExpenses   RecurringExpense[]
+  notifications       Notification[]
+  categorizationRules CategorizationRule[]
+  syncMetadata        SyncMetadata[]
+
+  @@index([email])
+}
+
+model RefreshToken {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @db.Uuid
+  tokenHash       String    @unique @db.VarChar(255)
+  deviceInfo      String?   @db.VarChar(255)
+  expiresAt       DateTime
+  revokedAt       DateTime?
+  replacedByToken String?   @db.VarChar(255)
+  createdAt       DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
+model Category {
+  id        String          @id @default(uuid()) @db.Uuid
+  userId    String?         @db.Uuid
+  name      String          @db.VarChar(80)
+  type      TransactionType
+  icon      String          @default("category") @db.VarChar(60)
+  colorHex  String          @default("#4F46E5") @db.VarChar(12)
+  isSystem  Boolean         @default(false)
+  isDeleted Boolean         @default(false)
+  deletedAt DateTime?
+  version   Int             @default(1)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  user                User?                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions        Transaction[]
+  budgets             Budget[]
+  recurringExpenses   RecurringExpense[]
+  categorizationRules CategorizationRule[]
+
+  @@unique([userId, name, type])
+  @@index([userId, type, isDeleted])
+}
+
+model Transaction {
+  id                      String          @id @default(uuid()) @db.Uuid
+  userId                  String          @db.Uuid
+  categoryId              String          @db.Uuid
+  recurringExpenseId      String?         @db.Uuid
+  type                    TransactionType
+  amountPaise             BigInt          @db.BigInt
+  currency                String          @default("INR") @db.VarChar(10)
+  merchant                String?         @db.VarChar(160)
+  description             String          @db.VarChar(255)
+  notes                   String?         @db.Text
+  paymentMethod           PaymentMethod   @default(UPI)
+  transactionDate         DateTime
+  isAutoCategorized       Boolean         @default(false)
+  categorizationConfidence Int?
+  isDemoData              Boolean         @default(false)
+  syncStatus              SyncStatus      @default(SYNCED)
+  version                 Int             @default(1)
+  isDeleted               Boolean         @default(false)
+  deletedAt               DateTime?
+  clientCreatedAt         DateTime        @default(now())
+  clientUpdatedAt         DateTime        @default(now())
+  createdAt               DateTime        @default(now())
+  updatedAt               DateTime        @updatedAt
+
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category         Category          @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  recurringExpense RecurringExpense? @relation(fields: [recurringExpenseId], references: [id], onDelete: SetNull)
+
+  @@index([userId, transactionDate(sort: Desc), isDeleted])
+  @@index([userId, type, transactionDate])
+  @@index([userId, categoryId, transactionDate])
+  @@index([userId, updatedAt])
+}
+
+model Budget {
+  id                  String    @id @default(uuid()) @db.Uuid
+  userId              String    @db.Uuid
+  categoryId          String?   @db.Uuid
+  month               Int
+  year                Int
+  amountPaise         BigInt    @db.BigInt
+  alertThresholds     Int[]     @default([50, 75, 90, 100])
+  triggeredThresholds Int[]     @default([])
+  version             Int       @default(1)
+  isDeleted           Boolean   @default(false)
+  deletedAt           DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@index([userId, year, month, isDeleted])
+  @@index([userId, categoryId, year, month])
+}
+
+model RecurringExpense {
+  id              String              @id @default(uuid()) @db.Uuid
+  userId          String              @db.Uuid
+  categoryId      String              @db.Uuid
+  type            TransactionType     @default(EXPENSE)
+  title           String              @db.VarChar(160)
+  merchant        String?             @db.VarChar(160)
+  description     String?             @db.VarChar(255)
+  amountPaise     BigInt              @db.BigInt
+  paymentMethod   PaymentMethod       @default(UPI)
+  frequency       RecurrenceFrequency
+  intervalCount   Int                 @default(1)
+  startDate       DateTime
+  endDate         DateTime?
+  nextOccurrence  DateTime
+  lastGeneratedAt DateTime?
+  isActive        Boolean             @default(true)
+  reminderDays    Int                 @default(3)
+  version         Int                 @default(1)
+  isDeleted       Boolean             @default(false)
+  deletedAt       DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category     Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  transactions Transaction[]
+
+  @@index([userId, isActive, nextOccurrence, isDeleted])
+}
+
+model CategorizationRule {
+  id              String          @id @default(uuid()) @db.Uuid
+  userId          String?         @db.Uuid
+  categoryId      String          @db.Uuid
+  transactionType TransactionType @default(EXPENSE)
+  pattern         String          @db.VarChar(160)
+  matchType       String          @default("CONTAINS") @db.VarChar(30)
+  confidence      Int             @default(90)
+  priority        Int             @default(100)
+  isUserCorrection Boolean        @default(false)
+  isSystem        Boolean         @default(false)
+  isDeleted       Boolean         @default(false)
+  deletedAt       DateTime?
+  version         Int             @default(1)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  user     User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, pattern, transactionType])
+  @@index([userId, transactionType, priority(sort: Desc)])
+}
+
+model Notification {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @db.Uuid
+  type      NotificationType
+  title     String           @db.VarChar(160)
+  message   String           @db.Text
+  metadata  Json?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt(sort: Desc)])
+}
+
+model SyncMetadata {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @db.Uuid
+  deviceId         String   @db.VarChar(120)
+  lastPulledAt     DateTime?
+  lastPushedAt     DateTime?
+  lastSyncRevision BigInt   @default(0) @db.BigInt
+  updatedAt        DateTime @updatedAt
+  createdAt        DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, deviceId])
+  @@index([userId])
+}
