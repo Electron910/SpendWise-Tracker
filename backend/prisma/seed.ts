@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import { PaymentMethod, SyncStatus, TransactionType } from '@prisma/client';
 import { prisma } from '../src/config/database';
 import { DEFAULT_SYSTEM_CATEGORIES } from '../src/modules/auth/defaultCategories';
 
@@ -6,7 +7,7 @@ export const DEMO_USER_EMAIL = 'demo@spendwise.app';
 export const DEMO_USER_PASSWORD = 'DemoPassword123';
 
 async function main() {
-  console.log('Seeding SpendWise demo account & system categories...');
+  console.log('Seeding SpendWise demo account, categories & fictional transactions...');
 
   const passwordHash = await bcrypt.hash(DEMO_USER_PASSWORD, 10);
 
@@ -26,8 +27,10 @@ async function main() {
     },
   });
 
+  const categoryMap = new Map<string, string>();
+
   for (const cat of DEFAULT_SYSTEM_CATEGORIES) {
-    await prisma.category.upsert({
+    const saved = await prisma.category.upsert({
       where: {
         userId_name_type: {
           userId: demoUser.id,
@@ -48,6 +51,187 @@ async function main() {
         colorHex: cat.colorHex,
         isSystem: true,
       },
+    });
+    categoryMap.set(`${cat.type}:${cat.name}`, saved.id);
+  }
+
+  // Seed fictional multi-month demo transactions if none exist yet
+  const existingTxCount = await prisma.transaction.count({
+    where: { userId: demoUser.id, isDeleted: false },
+  });
+
+  if (existingTxCount === 0) {
+    const now = new Date();
+    const y = now.getUTCFullYear();
+    const m = now.getUTCMonth();
+
+    const makeDate = (monthOffset: number, day: number) =>
+      new Date(Date.UTC(y, m + monthOffset, day, 10, 0, 0));
+
+    const demoTransactions = [
+      // Current Month Income & Expenses
+      {
+        type: TransactionType.INCOME,
+        categoryKey: 'INCOME:Salary',
+        amountPaise: 9500000n, // ₹95,000.00
+        merchant: 'Acme Tech Solutions Pvt Ltd',
+        description: 'Monthly Salary Credit',
+        paymentMethod: PaymentMethod.BANK_TRANSFER,
+        transactionDate: makeDate(0, 1),
+      },
+      {
+        type: TransactionType.INCOME,
+        categoryKey: 'INCOME:Freelance',
+        amountPaise: 1500000n, // ₹15,000.00
+        merchant: 'Upwork Global',
+        description: 'UI Design Advisory Retainer',
+        paymentMethod: PaymentMethod.BANK_TRANSFER,
+        transactionDate: makeDate(0, 5),
+      },
+      {
+        type: TransactionType.EXPENSE,
+        categoryKey: 'EXPENSE:Rent',
+        amountPaise: 2400000n, // ₹24,000.00
+        merchant: 'Indiranagar Apartment Owner',
+        description: 'Monthly House Rent',
+        paymentMethod: PaymentMethod.UPI,
+        transactionDate: makeDate(0, 2),
+      },
+      {
+        type: TransactionType.EXPENSE,
+        categoryKey: 'EXPENSE:Groceries',
+        amountPaise: 425050n, // ₹4,250.50
+        merchant: 'BigBasket',
+        description: 'Monthly groceries and fresh produce',
+        paymentMethod: PaymentMethod.UPI,
+        transactionDate: makeDate(0, 4),
+      },
+      {
+        type: TransactionType.EXPENSE,
+        categoryKey: 'EXPENSE:Food',
+        amountPaise: 185000n, // ₹1,850.00
+        merchant: 'Swiggy',
+        description: 'Dinner order from Meghana Foods',
+        paymentMethod: PaymentMethod.UPI,
+        transactionDate: makeDate(0, 6),
+      },
+      {
+        type: TransactionType.EXPENSE,
+        categoryKey: 'EXPENSE:Transportation',
+        amountPaise: 94500n, // ₹945.00
+        merchant: 'Uber India',
+        description: 'Airport & office commute rides',
+        paymentMethod: PaymentMethod.UPI,
+        transactionDate: makeDate(0, 7),
+      },
+      {
+        type: TransactionType.EXPENSE,
+        categoryKey: 'EXPENSE:Subscriptions',
+        amountPaise: 64900n, // ₹649.00
+        merchant: 'Netflix',
+        description: 'Netflix Standard Monthly Plan',
+        paymentMethod: PaymentMethod.CREDIT_CARD,
+        transactionDate: makeDate(0, 8),
+      },
+      {
+        type: TransactionType.EXPENSE,
+        categoryKey: 'EXPENSE:Shopping',
+        amountPaise: 349900n, // ₹3,499.00
+        merchant: 'Amazon India',
+        description: 'Wireless ergonomic keyboard & stand',
+        paymentMethod: PaymentMethod.CREDIT_CARD,
+        transactionDate: makeDate(0, 9),
+      },
+      {
+        type: TransactionType.EXPENSE,
+        categoryKey: 'EXPENSE:Utilities',
+        amountPaise: 215000n, // ₹2,150.00
+        merchant: 'BESCOM & Airtel Fiber',
+        description: 'Electricity and fiber broadband bill',
+        paymentMethod: PaymentMethod.UPI,
+        transactionDate: makeDate(0, 10),
+      },
+      // Previous Month (-1)
+      {
+        type: TransactionType.INCOME,
+        categoryKey: 'INCOME:Salary',
+        amountPaise: 9500000n,
+        merchant: 'Acme Tech Solutions Pvt Ltd',
+        description: 'Monthly Salary Credit',
+        paymentMethod: PaymentMethod.BANK_TRANSFER,
+        transactionDate: makeDate(-1, 1),
+      },
+      {
+        type: TransactionType.EXPENSE,
+        categoryKey: 'EXPENSE:Rent',
+        amountPaise: 2400000n,
+        merchant: 'Indiranagar Apartment Owner',
+        description: 'Monthly House Rent',
+        paymentMethod: PaymentMethod.UPI,
+        transactionDate: makeDate(-1, 2),
+      },
+      {
+        type: TransactionType.EXPENSE,
+        categoryKey: 'EXPENSE:Food',
+        amountPaise: 142000n,
+        merchant: 'Zomato',
+        description: 'Weekend lunches and coffee',
+        paymentMethod: PaymentMethod.UPI,
+        transactionDate: makeDate(-1, 12),
+      },
+      {
+        type: TransactionType.EXPENSE,
+        categoryKey: 'EXPENSE:Shopping',
+        amountPaise: 280000n,
+        merchant: 'Myntra',
+        description: 'Formal office wear',
+        paymentMethod: PaymentMethod.DEBIT_CARD,
+        transactionDate: makeDate(-1, 18),
+      },
+      // Two Months Ago (-2)
+      {
+        type: TransactionType.INCOME,
+        categoryKey: 'INCOME:Salary',
+        amountPaise: 9500000n,
+        merchant: 'Acme Tech Solutions Pvt Ltd',
+        description: 'Monthly Salary Credit',
+        paymentMethod: PaymentMethod.BANK_TRANSFER,
+        transactionDate: makeDate(-2, 1),
+      },
+      {
+        type: TransactionType.EXPENSE,
+        categoryKey: 'EXPENSE:Rent',
+        amountPaise: 2400000n,
+        merchant: 'Indiranagar Apartment Owner',
+        description: 'Monthly House Rent',
+        paymentMethod: PaymentMethod.UPI,
+        transactionDate: makeDate(-2, 2),
+      },
+      {
+        type: TransactionType.EXPENSE,
+        categoryKey: 'EXPENSE:Healthcare',
+        amountPaise: 180000n,
+        merchant: 'Apollo Pharmacy',
+        description: 'Annual health checkup & vitamins',
+        paymentMethod: PaymentMethod.UPI,
+        transactionDate: makeDate(-2, 15),
+      },
+    ];
+
+    await prisma.transaction.createMany({
+      data: demoTransactions.map((tx) => ({
+        userId: demoUser.id,
+        categoryId: categoryMap.get(tx.categoryKey)!,
+        type: tx.type,
+        amountPaise: tx.amountPaise,
+        currency: 'INR',
+        merchant: tx.merchant,
+        description: tx.description,
+        paymentMethod: tx.paymentMethod,
+        transactionDate: tx.transactionDate,
+        isDemoData: true,
+        syncStatus: SyncStatus.SYNCED,
+      })),
     });
   }
 
