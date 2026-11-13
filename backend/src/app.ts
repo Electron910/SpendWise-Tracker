@@ -9,6 +9,7 @@ import { logger } from './config/logger';
 import { swaggerSpec } from './config/swagger';
 import { authRouter } from './modules/auth/auth.routes';
 import { analyticsRouter } from './modules/analytics/analytics.routes';
+import { budgetsRouter } from './modules/budgets/budgets.routes';
 import { categoriesRouter } from './modules/categories/categories.routes';
 import { categorizationRouter } from './modules/categorization/categorization.routes';
 import { transactionsRouter } from './modules/transactions/transactions.routes';
@@ -64,6 +65,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // API v1 routes
 app.use(`${env.API_PREFIX}/auth`, authRouter);
 app.use(`${env.API_PREFIX}/analytics`, analyticsRouter);
+app.use(`${env.API_PREFIX}/budgets`, budgetsRouter);
 app.use(`${env.API_PREFIX}/categories`, categoriesRouter);
 app.use(`${env.API_PREFIX}/categorization`, categorizationRouter);
 app.use(`${env.API_PREFIX}/transactions`, transactionsRouter);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../budgets/presentation/screens/budgets_screen.dart';
 import '../../../categories/presentation/screens/categories_screen.dart';
 import '../../../dashboard/presentation/screens/dashboard_screen.dart';
 import '../../../transactions/presentation/screens/transactions_screen.dart';
@@ -27,6 +28,7 @@ class _AuthenticatedShellScreenState
     final pages = <Widget>[
       const DashboardScreen(),
       const TransactionsScreen(),
+      const BudgetsScreen(),
       const CategoriesScreen(),
       _AccountOverviewTab(
         fullName: user?.fullName ?? 'SpendWise User',
@@ -39,6 +41,7 @@ class _AuthenticatedShellScreenState
     final titles = <String>[
       'Dashboard',
       'Transactions',
+      'Budgets',
       'Categories',
       'Account',
     ];
@@ -106,6 +109,11 @@ class _AuthenticatedShellScreenState
             icon: Icon(Icons.receipt_long_outlined),
             selectedIcon: Icon(Icons.receipt_long_rounded),
             label: 'Transactions',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.pie_chart_outline_rounded),
+            selectedIcon: Icon(Icons.pie_chart_rounded),
+            label: 'Budgets',
           ),
           NavigationDestination(
             icon: Icon(Icons.category_outlined),
