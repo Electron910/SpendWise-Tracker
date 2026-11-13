@@ -368,7 +368,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                                 ),
                               ),
                               subtitle: Text(
-                                '${tx.category.name} • ${DateFormat('dd MMM yyyy').format(tx.transactionDate.toLocal())}',
+                                '${tx.category.name} • ${DateFormat('dd MMM yyyy').format(tx.transactionDate.toLocal())}${tx.syncStatus != 'SYNCED' ? ' • ${tx.syncStatus}' : ''}',
                                 style: const TextStyle(
                                   fontSize: 12,
                                   color: AppColors.lightTextSecondary,
