@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/money_utils.dart';
+import '../../../insights/presentation/widgets/insights_section_widget.dart';
 import '../../domain/entities/analytics_entities.dart';
 import '../providers/analytics_provider.dart';
 
@@ -105,6 +106,8 @@ class AnalyticsScreen extends ConsumerWidget {
                             _buildSummarySection(bundle),
                             const SizedBox(height: 16),
                             _buildHighlightsRow(bundle),
+                            const SizedBox(height: 16),
+                            const InsightsSectionWidget(),
                             const SizedBox(height: 20),
                             _buildMonthlyIncomeVsExpenseCard(bundle.monthlySeries),
                             const SizedBox(height: 20),

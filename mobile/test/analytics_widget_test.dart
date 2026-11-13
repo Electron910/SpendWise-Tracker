@@ -7,6 +7,21 @@ import 'package:spendwise_mobile/features/analytics/data/repositories/analytics_
 import 'package:spendwise_mobile/features/analytics/domain/entities/analytics_entities.dart';
 import 'package:spendwise_mobile/features/analytics/presentation/providers/analytics_provider.dart';
 import 'package:spendwise_mobile/features/analytics/presentation/screens/analytics_screen.dart';
+import 'package:spendwise_mobile/features/insights/data/repositories/insights_repository_impl.dart';
+import 'package:spendwise_mobile/features/insights/domain/entities/financial_insight_entity.dart';
+import 'package:spendwise_mobile/features/insights/presentation/providers/insights_provider.dart';
+
+class FakeInsightsRepoForAnalytics extends InsightsRepositoryImpl {
+  FakeInsightsRepoForAnalytics() : super(Dio());
+
+  @override
+  Future<List<FinancialInsightEntity>> fetchInsights({
+    required int month,
+    required int year,
+  }) async {
+    return const [];
+  }
+}
 
 class FakeAnalyticsRepository extends AnalyticsRepositoryImpl {
   FakeAnalyticsRepository() : super(Dio());
@@ -88,6 +103,7 @@ void main() {
       ProviderScope(
         overrides: [
           analyticsRepositoryProvider.overrideWithValue(FakeAnalyticsRepository()),
+          insightsRepositoryProvider.overrideWithValue(FakeInsightsRepoForAnalytics()),
         ],
         child: MaterialApp(
           theme: AppTheme.lightTheme,

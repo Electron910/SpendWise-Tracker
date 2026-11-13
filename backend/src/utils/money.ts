@@ -41,6 +41,20 @@ export function formatPaiseToDecimalString(amountPaise: bigint): string {
 }
 
 /**
+ * Formats integer paise (BigInt) into an INR currency string (e.g., 120000n -> "₹1,200")
+ * using pure integer operations.
+ */
+export function formatPaiseToInr(amountPaise: bigint): string {
+  const isNegative = amountPaise < 0n;
+  const absPaise = isNegative ? -amountPaise : amountPaise;
+  const rupees = absPaise / PAISE_PER_RUPEE;
+  const remainder = absPaise % PAISE_PER_RUPEE;
+  const rupeesFormatted = Number(rupees).toLocaleString('en-IN');
+  const suffix = remainder > 0n ? `.${remainder.toString().padStart(2, '0')}` : '';
+  return `${isNegative ? '-' : ''}₹${rupeesFormatted}${suffix}`;
+}
+
+/**
  * Computes integer percentage in basis points (1% = 100 bps, 100% = 10000 bps)
  * and rounded whole percentage using pure BigInt arithmetic.
  */
