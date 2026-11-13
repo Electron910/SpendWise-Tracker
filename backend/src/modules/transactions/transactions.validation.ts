@@ -13,7 +13,7 @@ export const amountPaiseSchema = z
 export const createTransactionSchema = z.object({
   body: z.object({
     id: z.string().uuid().optional(),
-    categoryId: z.string().uuid('Valid categoryId UUID is required'),
+    categoryId: z.string().uuid('Valid categoryId UUID is required').optional(),
     type: z.nativeEnum(TransactionType),
     amountPaise: amountPaiseSchema,
     currency: z.string().trim().toUpperCase().default('INR'),
@@ -34,6 +34,7 @@ export const createTransactionSchema = z.object({
       }),
     isAutoCategorized: z.boolean().default(false),
     categorizationConfidence: z.number().int().min(0).max(100).optional().nullable(),
+    rememberCategoryForMerchant: z.boolean().default(false),
   }),
   query: z.object({}).passthrough(),
   params: z.object({}).passthrough(),
@@ -59,6 +60,7 @@ export const updateTransactionSchema = z.object({
       })
       .optional(),
     expectedVersion: z.number().int().positive().optional(),
+    rememberCategoryCorrection: z.boolean().default(true),
   }),
   query: z.object({}).passthrough(),
   params: z.object({

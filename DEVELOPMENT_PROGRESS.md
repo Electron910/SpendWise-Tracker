@@ -8,7 +8,7 @@ This document tracks every feature branch, test execution result, commit hash, G
 | :- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | 1 | M1 & M2 | Project Setup, Prisma Schema, JWT Auth & Onboarding (Backend + Mobile) | `feature/authentication` | Merged | Backend: 10/10 passed (`vitest`), Mobile: 5/5 passed (`flutter test`) | `ef85153` | Pushed (`origin/main`) | Approved | Merged into `main` |
 | 2 | M2 | Categories & Transaction Management CRUD + Filtering/Search | `feature/transaction-management` | Merged | Backend: 16/16 passed (`vitest`), Mobile: 6/6 passed (`flutter test`) | `5038333` | Pushed (`origin/main`) | Approved | Merged into `main` |
-| 3 | M2 | Deterministic Rule-Based Expense Categorization Engine | `feature/expense-categorization` | In Progress | Pending | Pending | Pending | Pending | Pending |
+| 3 | M2 | Deterministic Rule-Based Expense Categorization Engine | `feature/expense-categorization` | Completed (Awaiting Merge Approval) | Backend: 19/19 passed (`vitest`), Mobile: 8/8 passed (`flutter test`) | Pending Commit | Pushed (`origin/feature/expense-categorization`) | Awaiting Approval | Not Merged |
 | 4 | M2 | Home Dashboard (Monthly Summary, Charts, Recent Tx, Budget Cards) | `feature/dashboard` | Planned | - | - | - | - | - |
 | 5 | M3 | Monthly & Category Budget Management + Alerts (50/75/90/100%) | `feature/budget-management` | Planned | - | - | - | - | - |
 | 6 | M3 | Financial Analytics & Interactive Charts (`fl_chart`) | `feature/financial-analytics` | Planned | - | - | - | - | - |

@@ -1,4 +1,5 @@
 import '../../../categories/domain/entities/category_entity.dart';
+import '../../../categorization/domain/services/deterministic_categorizer.dart';
 import '../entities/transaction_entity.dart';
 
 class TransactionsFilter {
@@ -103,4 +104,13 @@ abstract class TransactionsRepository {
   });
 
   Future<void> deleteTransaction(String id);
+
+  Future<List<CategorizationRuleEntity>> getUserCategorizationRules();
+
+  Future<CategorizationRuleEntity> saveUserCategorizationRule({
+    required String categoryId,
+    required String transactionType,
+    required String pattern,
+    bool isUserCorrection = false,
+  });
 }

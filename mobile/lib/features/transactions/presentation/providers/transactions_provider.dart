@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../categories/domain/entities/category_entity.dart';
+import '../../../categorization/domain/services/deterministic_categorizer.dart';
 import '../../data/repositories/transactions_repository_impl.dart';
 import '../../domain/entities/transaction_entity.dart';
 import '../../domain/repositories/transactions_repository.dart';
@@ -9,6 +10,7 @@ class TransactionsState {
     this.isLoading = false,
     this.transactions = const [],
     this.categories = const [],
+    this.userRules = const [],
     this.totalIncomePaise = 0,
     this.totalExpensePaise = 0,
     this.netSavingsPaise = 0,
@@ -19,6 +21,7 @@ class TransactionsState {
   final bool isLoading;
   final List<TransactionEntity> transactions;
   final List<CategoryEntity> categories;
+  final List<CategorizationRuleEntity> userRules;
   final int totalIncomePaise;
   final int totalExpensePaise;
   final int netSavingsPaise;
@@ -32,6 +35,7 @@ class TransactionsState {
     bool? isLoading,
     List<TransactionEntity>? transactions,
     List<CategoryEntity>? categories,
+    List<CategorizationRuleEntity>? userRules,
     int? totalIncomePaise,
     int? totalExpensePaise,
     int? netSavingsPaise,
@@ -43,6 +47,7 @@ class TransactionsState {
       isLoading: isLoading ?? this.isLoading,
       transactions: transactions ?? this.transactions,
       categories: categories ?? this.categories,
+      userRules: userRules ?? this.userRules,
       totalIncomePaise: totalIncomePaise ?? this.totalIncomePaise,
       totalExpensePaise: totalExpensePaise ?? this.totalExpensePaise,
       netSavingsPaise: netSavingsPaise ?? this.netSavingsPaise,
@@ -63,14 +68,17 @@ class TransactionsNotifier extends StateNotifier<TransactionsState> {
       final results = await Future.wait([
         _repository.getCategories(),
         _repository.getTransactions(state.filter),
+        _repository.getUserCategorizationRules(),
       ]);
       final categories = results[0] as List<CategoryEntity>;
       final txSummary = results[1] as TransactionsSummaryResult;
+      final userRules = results[2] as List<CategorizationRuleEntity>;
 
       state = state.copyWith(
         isLoading: false,
         categories: categories,
         transactions: txSummary.transactions,
+        userRules: userRules,
         totalIncomePaise: txSummary.totalIncomePaise,
         totalExpensePaise: txSummary.totalExpensePaise,
         netSavingsPaise: txSummary.netSavingsPaise,
@@ -206,6 +214,26 @@ class TransactionsNotifier extends StateNotifier<TransactionsState> {
         errorMessage: e.toString().replaceFirst('Exception: ', ''),
       );
       return false;
+    }
+  }
+
+  Future<void> recordCategoryCorrection({
+    required String categoryId,
+    required String transactionType,
+    required String pattern,
+  }) async {
+    if (pattern.trim().length < 2) return;
+    try {
+      await _repository.saveUserCategorizationRule(
+        categoryId: categoryId,
+        transactionType: transactionType,
+        pattern: pattern,
+        isUserCorrection: true,
+      );
+      final updatedRules = await _repository.getUserCategorizationRules();
+      state = state.copyWith(userRules: updatedRules);
+    } catch (_) {
+      // Non-blocking preference save
     }
   }
 }

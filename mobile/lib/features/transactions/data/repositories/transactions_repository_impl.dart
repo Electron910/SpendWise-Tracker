@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../categories/domain/entities/category_entity.dart';
+import '../../../categorization/domain/services/deterministic_categorizer.dart';
 import '../../domain/entities/transaction_entity.dart';
 import '../../domain/repositories/transactions_repository.dart';
 
@@ -204,6 +205,67 @@ class TransactionsRepositoryImpl implements TransactionsRepository {
   Future<void> deleteTransaction(String id) async {
     try {
       await _dio.delete<Map<String, dynamic>>('/transactions/$id');
+    } catch (e) {
+      throw Exception(_extractError(e));
+    }
+  }
+
+  @override
+  Future<List<CategorizationRuleEntity>> getUserCategorizationRules() async {
+    try {
+      final response =
+          await _dio.get<Map<String, dynamic>>('/categorization/rules');
+      final data = response.data!['data'] as Map<String, dynamic>;
+      final list = data['userRules'] as List<dynamic>;
+      return list.map((item) {
+        final map = item as Map<String, dynamic>;
+        final cat = map['category'] as Map<String, dynamic>?;
+        return CategorizationRuleEntity(
+          id: map['id'] as String?,
+          categoryId: map['categoryId'] as String?,
+          pattern: map['pattern'] as String,
+          categoryName: (cat?['name'] as String?) ?? 'Other',
+          transactionType: (map['transactionType'] as String?) ?? 'EXPENSE',
+          confidence: (map['confidence'] as int?) ?? 95,
+          priority: (map['priority'] as int?) ?? 200,
+          isUserCorrection: (map['isUserCorrection'] as bool?) ?? false,
+        );
+      }).toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  @override
+  Future<CategorizationRuleEntity> saveUserCategorizationRule({
+    required String categoryId,
+    required String transactionType,
+    required String pattern,
+    bool isUserCorrection = false,
+  }) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '/categorization/rules',
+        data: {
+          'categoryId': categoryId,
+          'transactionType': transactionType,
+          'pattern': pattern.trim(),
+          'isUserCorrection': isUserCorrection,
+        },
+      );
+      final data = response.data!['data'] as Map<String, dynamic>;
+      final rule = data['rule'] as Map<String, dynamic>;
+      final cat = rule['category'] as Map<String, dynamic>?;
+      return CategorizationRuleEntity(
+        id: rule['id'] as String?,
+        categoryId: rule['categoryId'] as String?,
+        pattern: rule['pattern'] as String,
+        categoryName: (cat?['name'] as String?) ?? 'Other',
+        transactionType: (rule['transactionType'] as String?) ?? transactionType,
+        confidence: (rule['confidence'] as int?) ?? 98,
+        priority: (rule['priority'] as int?) ?? 220,
+        isUserCorrection: (rule['isUserCorrection'] as bool?) ?? isUserCorrection,
+      );
     } catch (e) {
       throw Exception(_extractError(e));
     }
