@@ -6,6 +6,7 @@ import '../../../analytics/presentation/screens/analytics_screen.dart';
 import '../../../budgets/presentation/screens/budgets_screen.dart';
 import '../../../categories/presentation/screens/categories_screen.dart';
 import '../../../dashboard/presentation/screens/dashboard_screen.dart';
+import '../../../recurring/presentation/screens/recurring_expenses_screen.dart';
 import '../../../transactions/presentation/screens/transactions_screen.dart';
 import '../providers/auth_provider.dart';
 
@@ -178,6 +179,20 @@ class _AccountOverviewTab extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.repeat_rounded),
+            title: const Text('Recurring Schedules'),
+            subtitle: const Text('Rent, subscriptions, salary & due reminders'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const RecurringExpensesScreen()),
+              );
+            },
           ),
         ),
         const SizedBox(height: 12),

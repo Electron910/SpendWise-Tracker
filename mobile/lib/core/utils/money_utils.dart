@@ -29,6 +29,15 @@ class MoneyUtils {
     return totalPaise;
   }
 
+  /// Safely attempts to parse a rupee string into integer paise, returning null on invalid input.
+  static int? tryParseRupeesToPaise(String input) {
+    try {
+      return parseRupeesToPaise(input);
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Formats integer paise into Indian Rupee format (e.g., 12550 -> "₹125.50", 15000000 -> "₹1,50,000.00")
   /// using pure integer division and string formatting.
   static String formatPaise(
