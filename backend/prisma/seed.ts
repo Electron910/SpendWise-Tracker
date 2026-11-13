@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { PaymentMethod, SyncStatus, TransactionType } from '@prisma/client';
+import { PaymentMethod, RecurrenceFrequency, SyncStatus, TransactionType } from '@prisma/client';
 import { prisma } from '../src/config/database';
 import { DEFAULT_SYSTEM_CATEGORIES } from '../src/modules/auth/defaultCategories';
 
@@ -232,6 +232,84 @@ async function main() {
         isDemoData: true,
         syncStatus: SyncStatus.SYNCED,
       })),
+    });
+  }
+
+  // Seed fictional monthly budgets & recurring expenses for demo user if none exist
+  const now = new Date();
+  const currentMonth = now.getUTCMonth() + 1;
+  const currentYear = now.getUTCFullYear();
+
+  const existingBudgets = await prisma.budget.count({
+    where: { userId: demoUser.id, month: currentMonth, year: currentYear, isDeleted: false },
+  });
+
+  if (existingBudgets === 0) {
+    await prisma.budget.createMany({
+      data: [
+        {
+          userId: demoUser.id,
+          categoryId: null, // Overall monthly budget: ₹50,000
+          month: currentMonth,
+          year: currentYear,
+          amountPaise: 5000000n,
+        },
+        {
+          userId: demoUser.id,
+          categoryId: categoryMap.get('EXPENSE:Food')!, // ₹5,000
+          month: currentMonth,
+          year: currentYear,
+          amountPaise: 500000n,
+        },
+        {
+          userId: demoUser.id,
+          categoryId: categoryMap.get('EXPENSE:Transportation')!, // ₹2,000
+          month: currentMonth,
+          year: currentYear,
+          amountPaise: 200000n,
+        },
+        {
+          userId: demoUser.id,
+          categoryId: categoryMap.get('EXPENSE:Shopping')!, // ₹4,000
+          month: currentMonth,
+          year: currentYear,
+          amountPaise: 400000n,
+        },
+      ],
+    });
+  }
+
+  const existingRecurring = await prisma.recurringExpense.count({
+    where: { userId: demoUser.id, isDeleted: false },
+  });
+
+  if (existingRecurring === 0) {
+    const nextMonthStart = new Date(Date.UTC(currentYear, currentMonth, 2, 9, 0, 0));
+    await prisma.recurringExpense.createMany({
+      data: [
+        {
+          userId: demoUser.id,
+          categoryId: categoryMap.get('EXPENSE:Rent')!,
+          type: TransactionType.EXPENSE,
+          title: 'Monthly Apartment Rent',
+          merchant: 'Indiranagar Apartment Owner',
+          amountPaise: 2400000n,
+          frequency: RecurrenceFrequency.MONTHLY,
+          startDate: new Date(Date.UTC(currentYear, 0, 2)),
+          nextOccurrence: nextMonthStart,
+        },
+        {
+          userId: demoUser.id,
+          categoryId: categoryMap.get('EXPENSE:Subscriptions')!,
+          type: TransactionType.EXPENSE,
+          title: 'Netflix Standard Plan',
+          merchant: 'Netflix',
+          amountPaise: 64900n,
+          frequency: RecurrenceFrequency.MONTHLY,
+          startDate: new Date(Date.UTC(currentYear, 0, 8)),
+          nextOccurrence: new Date(Date.UTC(currentYear, currentMonth, 8, 9, 0, 0)),
+        },
+      ],
     });
   }
 
