@@ -9,6 +9,7 @@ import { logger } from './config/logger';
 import { swaggerSpec } from './config/swagger';
 import { authRouter } from './modules/auth/auth.routes';
 import { categoriesRouter } from './modules/categories/categories.routes';
+import { categorizationRouter } from './modules/categorization/categorization.routes';
 import { transactionsRouter } from './modules/transactions/transactions.routes';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 
@@ -62,6 +63,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // API v1 routes
 app.use(`${env.API_PREFIX}/auth`, authRouter);
 app.use(`${env.API_PREFIX}/categories`, categoriesRouter);
+app.use(`${env.API_PREFIX}/categorization`, categorizationRouter);
 app.use(`${env.API_PREFIX}/transactions`, transactionsRouter);
 
 // 404 & Error Handlers

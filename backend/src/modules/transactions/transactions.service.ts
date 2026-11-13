@@ -2,6 +2,7 @@ import { PaymentMethod, Prisma, SyncStatus, TransactionType } from '@prisma/clie
 import { prisma } from '../../config/database';
 import { AppError } from '../../utils/appError';
 import { formatPaiseToDecimalString } from '../../utils/money';
+import { CategorizationService } from '../categorization/categorization.service';
 
 export interface FormattedTransaction {
   id: string;
@@ -217,7 +218,7 @@ export class TransactionsService {
     userId: string,
     input: {
       id?: string;
-      categoryId: string;
+      categoryId?: string;
       type: TransactionType;
       amountPaise: bigint;
       currency?: string;
@@ -228,11 +229,27 @@ export class TransactionsService {
       transactionDate: Date;
       isAutoCategorized?: boolean;
       categorizationConfidence?: number | null;
+      rememberCategoryForMerchant?: boolean;
     },
   ): Promise<FormattedTransaction> {
+    let resolvedCategoryId = input.categoryId;
+    let isAutoCategorized = input.isAutoCategorized ?? false;
+    let categorizationConfidence = input.categorizationConfidence ?? null;
+
+    if (!resolvedCategoryId) {
+      const classified = await CategorizationService.classify(userId, {
+        merchant: input.merchant,
+        description: input.description,
+        type: input.type,
+      });
+      resolvedCategoryId = classified.categoryId;
+      isAutoCategorized = true;
+      categorizationConfidence = classified.confidence;
+    }
+
     const category = await prisma.category.findFirst({
       where: {
-        id: input.categoryId,
+        id: resolvedCategoryId,
         userId,
         isDeleted: false,
       },
@@ -248,6 +265,15 @@ export class TransactionsService {
         400,
         'CATEGORY_TYPE_MISMATCH',
       );
+    }
+
+    if (input.rememberCategoryForMerchant && input.merchant && input.merchant.trim().length >= 2) {
+      await CategorizationService.upsertRule(userId, {
+        categoryId: resolvedCategoryId,
+        transactionType: input.type,
+        pattern: input.merchant,
+        isUserCorrection: true,
+      });
     }
 
     // Idempotency check if client supplied a UUID
@@ -269,7 +295,7 @@ export class TransactionsService {
       data: {
         ...(input.id ? { id: input.id } : {}),
         userId,
-        categoryId: input.categoryId,
+        categoryId: resolvedCategoryId,
         type: input.type,
         amountPaise: input.amountPaise,
         currency: input.currency ?? 'INR',
@@ -278,8 +304,8 @@ export class TransactionsService {
         notes: input.notes ?? null,
         paymentMethod: input.paymentMethod,
         transactionDate: input.transactionDate,
-        isAutoCategorized: input.isAutoCategorized ?? false,
-        categorizationConfidence: input.categorizationConfidence ?? null,
+        isAutoCategorized,
+        categorizationConfidence,
         syncStatus: SyncStatus.SYNCED,
         version: 1,
       },
@@ -302,6 +328,7 @@ export class TransactionsService {
       paymentMethod?: PaymentMethod;
       transactionDate?: Date;
       expectedVersion?: number;
+      rememberCategoryCorrection?: boolean;
     },
   ): Promise<FormattedTransaction> {
     const existing = await prisma.transaction.findFirst({
@@ -348,6 +375,25 @@ export class TransactionsService {
       );
     }
 
+    // If user changed the category and a merchant/description pattern is available, remember correction
+    const categoryChanged =
+      input.categoryId !== undefined && input.categoryId !== existing.categoryId;
+    const targetMerchant = input.merchant !== undefined ? input.merchant : existing.merchant;
+
+    if (
+      categoryChanged &&
+      (input.rememberCategoryCorrection ?? true) &&
+      targetMerchant &&
+      targetMerchant.trim().length >= 2
+    ) {
+      await CategorizationService.upsertRule(userId, {
+        categoryId: targetCategoryId,
+        transactionType: targetType,
+        pattern: targetMerchant,
+        isUserCorrection: true,
+      });
+    }
+
     const updated = await prisma.transaction.update({
       where: { id: transactionId },
       data: {
@@ -359,6 +405,7 @@ export class TransactionsService {
         ...(input.notes !== undefined ? { notes: input.notes } : {}),
         ...(input.paymentMethod !== undefined ? { paymentMethod: input.paymentMethod } : {}),
         ...(input.transactionDate !== undefined ? { transactionDate: input.transactionDate } : {}),
+        ...(categoryChanged ? { isAutoCategorized: false, categorizationConfidence: 100 } : {}),
         clientUpdatedAt: new Date(),
         version: { increment: 1 },
       },

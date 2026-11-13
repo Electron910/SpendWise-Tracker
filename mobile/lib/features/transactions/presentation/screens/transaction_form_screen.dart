@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/money_utils.dart';
 import '../../../categories/domain/entities/category_entity.dart';
+import '../../../categorization/domain/services/deterministic_categorizer.dart';
 import '../../domain/entities/transaction_entity.dart';
 import '../providers/transactions_provider.dart';
 
@@ -24,6 +25,8 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
   final _formKey = GlobalKey<FormState>();
   late String _selectedType;
   String? _selectedCategoryId;
+  bool _userManuallyChangedCategory = false;
+  CategorizationPrediction? _autoPrediction;
   late String _selectedPaymentMethod;
   late DateTime _selectedDate;
 
@@ -63,6 +66,31 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
       _selectedType = 'EXPENSE';
       _selectedPaymentMethod = 'UPI';
       _selectedDate = DateTime.now();
+    }
+    _merchantController.addListener(_evaluateAutoCategorization);
+    _descriptionController.addListener(_evaluateAutoCategorization);
+  }
+
+  void _evaluateAutoCategorization() {
+    if (widget.existingTransaction != null) return;
+    final txState = ref.read(transactionsNotifierProvider);
+    final prediction = DeterministicCategorizer.predict(
+      transactionType: _selectedType,
+      availableCategories: txState.categories,
+      merchant: _merchantController.text,
+      description: _descriptionController.text,
+      userRules: txState.userRules,
+    );
+
+    if (prediction.matched && prediction.categoryId != null) {
+      setState(() {
+        _autoPrediction = prediction;
+        if (!_userManuallyChangedCategory) {
+          _selectedCategoryId = prediction.categoryId;
+        }
+      });
+    } else if (_autoPrediction != null) {
+      setState(() => _autoPrediction = null);
     }
   }
 
@@ -147,6 +175,16 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
     final amountPaise = MoneyUtils.parseRupeesToPaise(_amountController.text);
     final notifier = ref.read(transactionsNotifierProvider.notifier);
 
+    // If user manually overrode an auto-predicted category for a merchant, remember their preference
+    final merchantText = _merchantController.text.trim();
+    if (_userManuallyChangedCategory && merchantText.length >= 2) {
+      await notifier.recordCategoryCorrection(
+        categoryId: categoryId,
+        transactionType: _selectedType,
+        pattern: merchantText,
+      );
+    }
+
     bool success;
     if (widget.existingTransaction != null) {
       success = await notifier.editTransaction(
@@ -221,7 +259,10 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
                     setState(() {
                       _selectedType = selection.first;
                       _selectedCategoryId = null;
+                      _userManuallyChangedCategory = false;
+                      _autoPrediction = null;
                     });
+                    _evaluateAutoCategorization();
                   },
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -266,8 +307,10 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
                               ),
                             )
                             .toList(),
-                        onChanged: (val) =>
-                            setState(() => _selectedCategoryId = val),
+                        onChanged: (val) => setState(() {
+                          _selectedCategoryId = val;
+                          _userManuallyChangedCategory = true;
+                        }),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -278,6 +321,42 @@ class _TransactionFormScreenState extends ConsumerState<TransactionFormScreen> {
                     ),
                   ],
                 ),
+                if (_autoPrediction != null && _autoPrediction!.matched) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    key: const Key('auto_category_confidence_banner'),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.indigoSoft,
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.auto_awesome_rounded,
+                          size: 16,
+                          color: AppColors.indigoAccent,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _userManuallyChangedCategory
+                                ? 'Manual override selected (will remember preference for merchant)'
+                                : _autoPrediction!.explanation,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.indigoAccent,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.md),
                 TextFormField(
                   key: const Key('tx_description_field'),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spendwise_mobile/core/theme/app_theme.dart';
 import 'package:spendwise_mobile/features/categories/domain/entities/category_entity.dart';
+import 'package:spendwise_mobile/features/categorization/domain/services/deterministic_categorizer.dart';
 import 'package:spendwise_mobile/features/transactions/data/repositories/transactions_repository_impl.dart';
 import 'package:spendwise_mobile/features/transactions/domain/entities/transaction_entity.dart';
 import 'package:spendwise_mobile/features/transactions/domain/repositories/transactions_repository.dart';
@@ -180,9 +181,137 @@ class FakeTransactionsRepository implements TransactionsRepository {
   Future<void> deleteTransaction(String id) async {
     _transactions.removeWhere((t) => t.id == id);
   }
+
+  final List<CategorizationRuleEntity> _userRules = [];
+
+  @override
+  Future<List<CategorizationRuleEntity>> getUserCategorizationRules() async =>
+      List.from(_userRules);
+
+  @override
+  Future<CategorizationRuleEntity> saveUserCategorizationRule({
+    required String categoryId,
+    required String transactionType,
+    required String pattern,
+    bool isUserCorrection = false,
+  }) async {
+    final cat = _categories.firstWhere((c) => c.id == categoryId);
+    final rule = CategorizationRuleEntity(
+      id: 'rule-${_userRules.length + 1}',
+      categoryId: categoryId,
+      pattern: DeterministicCategorizer.normalize(pattern),
+      categoryName: cat.name,
+      transactionType: transactionType,
+      confidence: 99,
+      priority: 250,
+      isUserCorrection: isUserCorrection,
+    );
+    _userRules.add(rule);
+    return rule;
+  }
 }
 
 void main() {
+  group('DeterministicCategorizer Unit Tests', () {
+    const testCategories = [
+      CategoryEntity(
+        id: 'cat-food',
+        name: 'Food',
+        type: 'EXPENSE',
+        icon: 'restaurant',
+        colorHex: '#EF4444',
+      ),
+      CategoryEntity(
+        id: 'cat-transport',
+        name: 'Transportation',
+        type: 'EXPENSE',
+        icon: 'directions_car',
+        colorHex: '#F97316',
+      ),
+      CategoryEntity(
+        id: 'cat-subs',
+        name: 'Subscriptions',
+        type: 'EXPENSE',
+        icon: 'subscriptions',
+        colorHex: '#A855F7',
+      ),
+      CategoryEntity(
+        id: 'cat-shopping',
+        name: 'Shopping',
+        type: 'EXPENSE',
+        icon: 'shopping_bag',
+        colorHex: '#EC4899',
+      ),
+      CategoryEntity(
+        id: 'cat-groceries',
+        name: 'Groceries',
+        type: 'EXPENSE',
+        icon: 'local_grocery_store',
+        colorHex: '#22C55E',
+      ),
+    ];
+
+    test('maps SWIGGY -> Food, UBER -> Transportation, NETFLIX -> Subscriptions, AMAZON -> Shopping', () {
+      final swiggy = DeterministicCategorizer.predict(
+        transactionType: 'EXPENSE',
+        availableCategories: testCategories,
+        merchant: 'Swiggy India',
+        description: 'Dinner order',
+      );
+      expect(swiggy.matched, isTrue);
+      expect(swiggy.categoryName, 'Food');
+      expect(swiggy.confidence, greaterThanOrEqualTo(90));
+
+      final uber = DeterministicCategorizer.predict(
+        transactionType: 'EXPENSE',
+        availableCategories: testCategories,
+        description: 'Uber cab to airport',
+      );
+      expect(uber.matched, isTrue);
+      expect(uber.categoryName, 'Transportation');
+
+      final netflix = DeterministicCategorizer.predict(
+        transactionType: 'EXPENSE',
+        availableCategories: testCategories,
+        merchant: 'NETFLIX.COM',
+      );
+      expect(netflix.matched, isTrue);
+      expect(netflix.categoryName, 'Subscriptions');
+
+      final amazon = DeterministicCategorizer.predict(
+        transactionType: 'EXPENSE',
+        availableCategories: testCategories,
+        merchant: 'Amazon Retail',
+      );
+      expect(amazon.matched, isTrue);
+      expect(amazon.categoryName, 'Shopping');
+    });
+
+    test('prioritizes learned user correction over built-in merchant rule', () {
+      const learnedRule = CategorizationRuleEntity(
+        categoryId: 'cat-groceries',
+        pattern: 'AMAZON PANTRY',
+        categoryName: 'Groceries',
+        transactionType: 'EXPENSE',
+        confidence: 99,
+        priority: 250,
+        isUserCorrection: true,
+      );
+
+      final result = DeterministicCategorizer.predict(
+        transactionType: 'EXPENSE',
+        availableCategories: testCategories,
+        merchant: 'Amazon Pantry Order',
+        userRules: const [learnedRule],
+      );
+
+      expect(result.matched, isTrue);
+      expect(result.categoryName, 'Groceries');
+      expect(result.isUserPreference, isTrue);
+      expect(result.confidence, 99);
+    });
+  });
+
   group('TransactionsScreen & TransactionFormScreen Widget Tests', () {
     testWidgets('renders transaction list and creates a new expense transaction',
         (tester) async {
