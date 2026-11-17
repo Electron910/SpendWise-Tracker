@@ -1,6 +1,6 @@
 import { PaymentMethod, RecurrenceFrequency, TransactionType } from '@prisma/client';
 import { prisma } from '../../config/database';
-import { AppError } from '../../middleware/error.middleware';
+import { AppError } from '../../utils/appError';
 import { formatPaiseToDecimalString } from '../../utils/money';
 
 export class RecurringService {

@@ -1,6 +1,6 @@
 import { NotificationType, TransactionType } from '@prisma/client';
 import { prisma } from '../../config/database';
-import { AppError } from '../../middleware/error.middleware';
+import { AppError } from '../../utils/appError';
 import { calculateUtilizationPercentage, formatPaiseToInr } from '../../utils/money';
 
 export class NotificationsService {

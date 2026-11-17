@@ -3,6 +3,8 @@ import { ZodError } from 'zod';
 import { AppError } from '../utils/appError';
 import { logger } from '../config/logger';
 
+export { AppError };
+
 export function notFoundHandler(req: Request, _res: Response, next: NextFunction): void {
   next(new AppError(`Route ${req.method} ${req.originalUrl} not found`, 404, 'ROUTE_NOT_FOUND'));
 }
