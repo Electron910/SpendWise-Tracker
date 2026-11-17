@@ -7,6 +7,7 @@ import '../../../budgets/presentation/screens/budgets_screen.dart';
 import '../../../categories/presentation/screens/categories_screen.dart';
 import '../../../dashboard/presentation/screens/dashboard_screen.dart';
 import '../../../exports/presentation/screens/exports_screen.dart';
+import '../../../notifications/presentation/screens/notifications_screen.dart';
 import '../../../recurring/presentation/screens/recurring_expenses_screen.dart';
 import '../../../sync/presentation/screens/sync_center_screen.dart';
 import '../../../transactions/presentation/screens/transactions_screen.dart';
@@ -54,6 +55,15 @@ class _AuthenticatedShellScreenState
       appBar: AppBar(
         title: Text(titles[_selectedIndex]),
         actions: [
+          IconButton(
+            tooltip: 'Notifications & Alerts',
+            icon: const Icon(Icons.notifications_outlined),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+              );
+            },
+          ),
           IconButton(
             tooltip: 'Offline Sync & Conflicts',
             icon: const Icon(Icons.cloud_sync_outlined),
