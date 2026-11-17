@@ -16,7 +16,7 @@ This document tracks every feature branch, test execution result, commit hash, G
 | 8 | M4 | Recurring Expenses Engine & Management | `feature/recurring-expenses` | Merged | Backend: 29/29 passed (`vitest`), Mobile: 14/14 passed (`flutter test`) | `4c0e1c1` | Pushed (`origin/main` & `origin/feature/recurring-expenses`) | Approved | Merged into `main` |
 | 9 | M5 | Local SQLite/Drift Offline Persistence & Queue | `feature/offline-storage` | Merged | Backend: 29/29 passed (`vitest`), Mobile: 15/15 passed (`flutter test`) | `e6012b1` | Pushed (`origin/main` & `origin/feature/offline-storage`) | Approved | Merged into `main` |
 | 10 | M5 | Offline Synchronization Engine & Optimistic Concurrency Conflict Resolution | `feature/synchronization-engine` | Merged | Backend: 32/32 passed (`vitest`), Mobile: 18/18 passed (`flutter test`) | `53d2ebc` | Pushed (`origin/main` & `origin/feature/synchronization-engine`) | Approved | Merged into `main` |
-| 11 | M4 | CSV Export & Financial Summary Reports | `feature/csv-export` | In Progress | Pending | Pending | Pending | Pending | Pending |
+| 11 | M4 | CSV Export & Financial Summary Reports | `feature/csv-export` | Ready for Review | Backend: 34/34 passed (`vitest`), Mobile: 20/20 passed (`flutter test`) | Pending | Pushed (`origin/feature/csv-export`) | Awaiting User Approval | Pending |
 | 12 | M4 | Local Notifications & Deterministic Alert Triggers | `feature/notifications` | Planned | - | - | - | - | - |
 | 13 | M4 | Settings, Profile, Currency (INR Paise), & Theme Management | `feature/settings` | Planned | - | - | - | - | - |
 | 14 | M6 | Comprehensive Backend Unit, Integration & Edge-Case Tests | `feature/backend-testing` | Planned | - | - | - | - | - |
