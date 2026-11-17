@@ -63,3 +63,13 @@ export const resetPasswordSchema = z.object({
   query: z.object({}).passthrough(),
   params: z.object({}).passthrough(),
 });
+
+export const updateProfileSchema = z.object({
+  body: z.object({
+    fullName: z.string().trim().min(2).max(120).optional(),
+    currency: z.string().trim().toUpperCase().min(3).max(10).optional(),
+    timezone: z.string().trim().max(64).optional(),
+  }),
+  query: z.object({}).passthrough(),
+  params: z.object({}).passthrough(),
+});

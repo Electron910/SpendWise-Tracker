@@ -387,4 +387,21 @@ export class AuthService {
     }
     return toSafeUserProfile(user);
   }
+
+  static async updateProfile(
+    userId: string,
+    input: { fullName?: string; currency?: string; timezone?: string },
+  ): Promise<SafeUserProfile> {
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(input.fullName !== undefined ? { fullName: input.fullName.trim() } : {}),
+        ...(input.currency !== undefined
+            ? { currency: input.currency.trim().toUpperCase() }
+            : {}),
+        ...(input.timezone !== undefined ? { timezone: input.timezone.trim() } : {}),
+      },
+    });
+    return toSafeUserProfile(updated);
+  }
 }
