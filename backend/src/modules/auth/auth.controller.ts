@@ -88,4 +88,14 @@ export class AuthController {
       next(error);
     }
   }
+
+  static async updateProfile(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const userId = req.user!.userId;
+      const profile = await AuthService.updateProfile(userId, req.body);
+      sendSuccess(res, { user: profile }, 'User profile updated successfully', 200);
+    } catch (error) {
+      next(error);
+    }
+  }
 }

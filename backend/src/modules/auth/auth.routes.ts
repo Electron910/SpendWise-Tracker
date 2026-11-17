@@ -9,6 +9,7 @@ import {
   refreshSchema,
   registerSchema,
   resetPasswordSchema,
+  updateProfileSchema,
 } from './auth.validation';
 
 export const authRouter = Router();
@@ -28,3 +29,9 @@ authRouter.post(
   AuthController.resetPassword,
 );
 authRouter.get('/me', requireAuth, AuthController.me);
+authRouter.patch(
+  '/profile',
+  requireAuth,
+  validateRequest(updateProfileSchema),
+  AuthController.updateProfile,
+);

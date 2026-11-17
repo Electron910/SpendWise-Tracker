@@ -4,11 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../analytics/presentation/screens/analytics_screen.dart';
 import '../../../budgets/presentation/screens/budgets_screen.dart';
-import '../../../categories/presentation/screens/categories_screen.dart';
 import '../../../dashboard/presentation/screens/dashboard_screen.dart';
-import '../../../exports/presentation/screens/exports_screen.dart';
 import '../../../notifications/presentation/screens/notifications_screen.dart';
-import '../../../recurring/presentation/screens/recurring_expenses_screen.dart';
+import '../../../settings/presentation/screens/settings_screen.dart';
 import '../../../sync/presentation/screens/sync_center_screen.dart';
 import '../../../transactions/presentation/screens/transactions_screen.dart';
 import '../providers/auth_provider.dart';
@@ -35,12 +33,7 @@ class _AuthenticatedShellScreenState
       const TransactionsScreen(),
       const BudgetsScreen(),
       const AnalyticsScreen(),
-      _AccountOverviewTab(
-        fullName: user?.fullName ?? 'SpendWise User',
-        email: user?.email ?? '',
-        currency: user?.currency ?? 'INR',
-        isDemoAccount: user?.isDemoAccount == true,
-      ),
+      const SettingsScreen(),
     ];
 
     final titles = <String>[
@@ -48,7 +41,7 @@ class _AuthenticatedShellScreenState
       'Transactions',
       'Budgets',
       'Analytics',
-      'Account',
+      'Settings & Profile',
     ];
 
     return Scaffold(
@@ -144,107 +137,12 @@ class _AuthenticatedShellScreenState
             label: 'Analytics',
           ),
           NavigationDestination(
-            icon: Icon(Icons.person_outline_rounded),
-            selectedIcon: Icon(Icons.person_rounded),
-            label: 'Profile',
+            icon: Icon(Icons.settings_outlined),
+            selectedIcon: Icon(Icons.settings_rounded),
+            label: 'Settings',
           ),
         ],
       ),
-    );
-  }
-}
-
-class _AccountOverviewTab extends StatelessWidget {
-  const _AccountOverviewTab({
-    required this.fullName,
-    required this.email,
-    required this.currency,
-    required this.isDemoAccount,
-  });
-
-  final String fullName;
-  final String email;
-  final String currency;
-  final bool isDemoAccount;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(AppSpacing.lg),
-      children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(AppSpacing.lg),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  fullName,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  email,
-                  style: const TextStyle(color: AppColors.lightTextSecondary),
-                ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    Chip(label: Text('Currency: $currency (₹)')),
-                    if (isDemoAccount)
-                      const Chip(label: Text('Demo Mode')),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.download_outlined),
-            title: const Text('CSV Export & Reports'),
-            subtitle: const Text('Export transactions & monthly financial reports'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ExportsScreen()),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 12),
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.repeat_rounded),
-            title: const Text('Recurring Schedules'),
-            subtitle: const Text('Rent, subscriptions, salary & due reminders'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const RecurringExpensesScreen()),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 12),
-        Card(
-          child: ListTile(
-            leading: const Icon(Icons.category_outlined),
-            title: const Text('Manage Categories'),
-            subtitle: const Text('Default & custom expense/income categories'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const CategoriesScreen()),
-              );
-            },
-          ),
-        ),
-      ],
     );
   }
 }
